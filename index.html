@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      #messageForm { background: #000; padding: 3px; bottom: 0; width: 70%; display: inline-block;  }
+      #messageBox {border-color: brown; border-style: solid; height: 650px; overflow-y: scroll;}
+      #userBox { border-color: brown; border-style: solid; height: 650px; overflow-y: scroll; float:left; width: 15%; padding: 10px; }
+      #userbox li { padding: 5px 10px; }
+      #users { list-style-type: none; margin: 0; padding: 0;  }
+      #messageForm input { border: 10; padding: 10px; width: 90%;  margin-right: .5%;}
+      #typing h4 {font: 13px Helvetica, Arial; font-style: oblique;}
+      #typing {float: right; padding: 5px;}
+      #messageForm button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0;  }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+      #backgroundNick{
+        height: 100%;
+        width: 100%;
+        background-color: #000;
+        opacity: 0.3;
+        position: fixed;
+        z-index: 2;
+        display: block;
+
+      }
+      #nicknameContainer{position: fixed;
+        top:0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin: auto;
+        border: 3px solid #f1f1f1;
+        width: 200px;
+        height: 50px;
+        z-index: 10;
+        background-color:white;
+        color: #000;
+        display: block;
+        }
+    </style>
+  </head>
+  <body>
+    <input id="nickHidden" type="hidden">
+      <div id="nicknameContainer">
+          <form id="nicknameForm" action = ''>
+            <h4>Enter your nickname</h4>
+            <input id='nick' type="text">
+            <button id="nickbtn">Enter</button>
+          </form>
+        </div>
+    <div id="backgroundNick"></div>
+    <div>
+      <div id="userBox">
+        <ul id="users">
+          <li>
+            <h3>Lista de usuarios conectados</h3>
+          </li>
+        </ul>
+      </div>
+      <div id="messageBox">
+          <ul id="messages"></ul>
+      </div>
+    </div>
+    
+    <div>
+      <div id="typing">
+       
+      </div>
+   
+       <form id="messageForm" action="">
+         <input id="m" autocomplete="off" placeholder="Your message" oninput="typing()" /><button>Send</button>
+       </form>
+    </div>
+  
+
+
+
+
+
+
+    <!--SCRIPT SECTION-->
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      function Message (nickname,message)
+      {
+        this.nickname = nickname;
+        this.message = message;
+      }
+      function append_message(msg){
+        $('#messages').append($('<li>').text(msg.nickname +": "+ msg.message));
+          var obj = document.getElementById("messageBox");
+        obj.scrollTop = obj.scrollHeight;
+      
+      }
+      
+
+      var socket = io();
+      
+      //FUNCION QUE EMITE UN EVENTO CADA VEZ QUE SE PULSA UNA TECLA
+      function typing(){
+        if(!($('#m').val() === ''))
+        {
+          socket.emit('typing',$('#nickHidden').val());
+        }
+        else  
+          socket.emit('typing','');    
+      }
+      //EVENTO QUE OCURRE CUANDO SE DA CLIC PARA A;ADIR EL NICKNAME  
+      $('#nickbtn').click(function(){
+        var nick = $('#nick').val();
+        $('#nickHidden').val(nick);
+        $('#backgroundNick').css('display','none');
+        $('#nicknameContainer').css('display','none');
+        socket.emit('user connected',$('#nick').val());
+        $('#messages').append($('<li>').text('WELCOME '+nick+'. Lets start to chat'));
+          var obj = document.getElementById("messageBox");
+        //socket.emit('chat message',msg);
+        //$('#m').val('');
+        return false;
+      });
+
+
+      //EVENTO QUE OCURRE CUANDO SE ENVIA UN MENSAJE
+      $('#messageForm').submit(function(){
+        var msg = new Message($('#nickHidden').val(),$('#m').val());
+        append_message(msg);
+        socket.emit('chat message',msg);
+        $('#m').val('');
+        return false;
+      });
+
+      //EVENTO PARA MOSTRAR LOS MENSAJES QUE LLEGAN DEL SERVER EN EL CLIENTE
+      socket.on('ui show message', function(msg){
+        append_message(msg);
+      });
+
+      //EVENTO QUE OCURRE CUANDO UN CLIENTE SE CONECTA.
+      socket.on('show message', function(msg){
+        $('#messages').append($('<li>').text(msg));
+      });
+
+      //EVENTO PARA MOSTRAR LOS USUARIOS CONECTADOS
+      socket.on('ui add user connected',function(msg){
+        var users = JSON.parse(msg);
+        $('#users').empty();
+        $('#users').append($('<li>').append($('<h3>').text('Lista de usuarios conectados')));
+        users.forEach(element => {
+          $('#users').append($('<li>').text(element.nickname));
+        });
+      });
+
+      //EVENTO PARA MOSTRAR QUIEN ESTA ESCRIBIENDO EN INTERFAZ
+      socket.on('ui typing',function(nick){
+        $('#typing').empty();
+        if(!(nick === ''))
+          $('#typing').append($('<h4>').text(nick+' esta escribiendo....'));
+      });
+    
+    </script>
+  </body>
+</html>
